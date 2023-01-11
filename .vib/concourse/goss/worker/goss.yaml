@@ -4,10 +4,6 @@ file:
     filetype: directory
     mode: "2777"
     owner: root
-  /var/run/secrets/kubernetes.io/serviceaccount:
-    exists: {{ .Vars.worker.serviceAccount.automountServiceAccountToken }}
-    filetype: directory
-    mode: "3777"
 command:
   {{- $user := .Vars.secrets.localUser }}
   {{- $pwd := .Vars.secrets.localPassword }}
@@ -27,3 +23,10 @@ command:
     stdout:
       - uid={{ .Vars.worker.containerSecurityContext.runAsUser }}
       - /groups=.*{{ .Vars.worker.podSecurityContext.fsGroup }}/
+  {{ if .Vars.worker.serviceAccount.automountServiceAccountToken }}
+  check-sa:
+    exec: cat /var/run/secrets/kubernetes.io/serviceaccount/token | cut -d '.' -f 2 | xargs -I '{}' echo '{}====' | fold -w 4 | sed '$ d' | tr -d '\n' | base64 -d
+    exit-status: 0
+    stdout:
+    - /serviceaccount.*name.*{{.Env.BITNAMI_APP_NAME }}/
+  {{ end }}

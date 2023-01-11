@@ -1,11 +1,6 @@
 http:
   http://grafana-service:3000:
     status: 200
-file:
-  /var/run/secrets/kubernetes.io/serviceaccount:
-    exists: {{ .Vars.operator.serviceAccount.automountServiceAccountToken }}
-    filetype: directory
-    mode: "3777"
 command:
   check-user-info:
     exec: id
@@ -13,3 +8,10 @@ command:
     stdout:
     - uid={{ .Vars.operator.containerSecurityContext.runAsUser }}
     - /groups=.*{{ .Vars.operator.containerSecurityContext.runAsGroup }}/
+  {{ if .Vars.operator.serviceAccount.automountServiceAccountToken }}
+  check-sa:
+    exec: cat /var/run/secrets/kubernetes.io/serviceaccount/token | cut -d '.' -f 2 | xargs -I '{}' echo '{}====' | fold -w 4 | sed '$ d' | tr -d '\n' | base64 -d
+    exit-status: 0
+    stdout:
+    - /serviceaccount.*name.*{{.Env.BITNAMI_APP_NAME }}/
+  {{ end }}

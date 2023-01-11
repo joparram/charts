@@ -4,15 +4,16 @@ http:
     allow-insecure: true
     body:
     - metrics_server_storage_points
-file:
-  /var/run/secrets/kubernetes.io/serviceaccount:
-    exists: {{ .Vars.serviceAccount.automountServiceAccountToken }}
-    filetype: directory
-    mode: "1777"
-    owner: root
 command:
   check-user-info:
     exec: id
     exit-status: 0
     stdout:
     - uid={{ .Vars.containerSecurityContext.runAsUser }}
+  {{ if .Vars.serviceAccount.automountServiceAccountToken }}
+  check-sa:
+    exec: cat /var/run/secrets/kubernetes.io/serviceaccount/token | cut -d '.' -f 2 | xargs -I '{}' echo '{}====' | fold -w 4 | sed '$ d' | tr -d '\n' | base64 -d
+    exit-status: 0
+    stdout:
+    - /serviceaccount.*name.*{{.Env.BITNAMI_APP_NAME }}/
+  {{ end }}
